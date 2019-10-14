@@ -8,14 +8,16 @@ import zio.blocking.Blocking
 import zio.console._
 import zio.duration.Duration
 import zio.random.Random
-
 import java.io.IOException
+
 import net.degoes.zio.applications.hangman.GuessResult.Incorrect
 import net.degoes.zio.applications.hangman.GuessResult.Won
 import net.degoes.zio.applications.hangman.GuessResult.Correct
 import net.degoes.zio.applications.hangman.GuessResult.Unchanged
 import net.degoes.zio.applications.hangman.GuessResult.Lost
 import java.util.concurrent.ConcurrentHashMap
+
+import net.degoes.zio.applications.parallel_web_crawler.URL
 
 object sharding extends App {
   /**
@@ -1082,7 +1084,7 @@ object parallel_web_crawler {
          * the `Throwable` error to `Exceptiono`.
          */
         def getURL(url: URL): IO[Exception, String] = {
-          // def effectBlocking[A](sideEffect: => A): ZIO[Blocking, Throwable, A]
+          //def effectBlocking[A](sideEffect: => A): ZIO[Blocking, Throwable, A]
 
           def getURLImpl(url: URL): String =
             scala.io.Source.fromURL(url.url)(scala.io.Codec.UTF8).mkString
@@ -1098,7 +1100,14 @@ object parallel_web_crawler {
    *
    * Using `ZIO.accessM`, delegate to the `Web` module's `getURL` function.
    */
-  def getURL(url: URL): ZIO[Web, Exception, String] = ???
+  def getURL(url: URL): ZIO[Web, Exception, String] = {
+    def getURLImpl(url: URL): String =
+      scala.io.Source.fromURL(url.url)(scala.io.Codec.UTF8).mkString
+
+    zio.blocking.effectBlocking(getURLImpl(url)).refineOrDie {
+      case e: Exception => e
+    }
+  }
 
   final case class CrawlState[+E](visited: Set[URL], errors: List[E]) {
     final def visitAll(urls: Set[URL]): CrawlState[E] = copy(visited = visited ++ urls)
@@ -1120,7 +1129,23 @@ object parallel_web_crawler {
     seeds: Set[URL],
     router: URL => Set[URL],
     processor: (URL, String) => IO[E, Unit]
-  ): ZIO[Web, Nothing, List[E]] = ???
+  ): ZIO[Web, Nothing, List[E]] = {
+    def loop(seeds: Set[URL], ref: Ref[CrawlState[E]]): ZIO[Blocking, Nothing, Unit] =
+      ZIO.foreachParN(100)(seeds) { seed =>
+        (for {
+          html    <- getURL(seed)
+          scraped = extractURLs(seed, html).toSet.flatMap(router)
+          either  <- processor(seed, html).either
+          newUrls <- ref.modify(state => (scraped -- state.visited, { val s2 = state.visitAll(scraped); either.fold(s2.logError, _ => s2) }))
+        } yield newUrls) orElse ZIO.succeed(Set.empty[URL])
+      }.map(_.toSet.flatten).flatMap(newUrls => loop(newUrls, ref))
+
+    for {
+      ref   <- Ref.make(CrawlState(seeds, List.empty[E]))
+      _     <- loop(seeds, ref)
+      state <- ref.get
+    } yield state.errors
+  }
 
   /**
    * A data structure representing a structured URL, with a smart constructor.
