@@ -17,15 +17,14 @@ import net.degoes.zio.applications.hangman.GuessResult.Unchanged
 import net.degoes.zio.applications.hangman.GuessResult.Lost
 import java.util.concurrent.ConcurrentHashMap
 
-import net.degoes.zio.applications.parallel_web_crawler.URL
-
 object sharding extends App {
+
   /**
-   * Create N workers reading from a Queue, if one of them fails, 
-   * then wait for the other ones to process the current item, but 
+   * Create N workers reading from a Queue, if one of them fails,
+   * then wait for the other ones to process the current item, but
    * terminate all the workers.
    */
-  def shard[R, E, A](queue: Queue[A], n: Int, worker: A => ZIO[R, E, Unit]): ZIO[R, E, Unit] = 
+  def shard[R, E, A](queue: Queue[A], n: Int, worker: A => ZIO[R, E, Unit]): ZIO[R, E, Unit] =
     ???
 
   def run(args: List[String]) = ???
@@ -45,10 +44,10 @@ object alerting {
   def sendSystemEmail(to: Email, subject: String, body: String): UIO[Unit] = ???
 
   /**
-   * Use STM to alert an engineer when the number of hourly errors exceeds 
+   * Use STM to alert an engineer when the number of hourly errors exceeds
    * 100.
    */
-  def alertEngineer(metrics: Metrics, onDuty: TRef[Engineer]): UIO[Unit] = 
+  def alertEngineer(metrics: Metrics, onDuty: TRef[Engineer]): UIO[Unit] =
     ???
 }
 
@@ -1118,6 +1117,7 @@ object parallel_web_crawler {
    * def extractURLs(root: URL, html: String): List[URL]
    * }}}
    */
+  /*
   def crawl[E](
     seeds: Set[URL],
     router: URL => Set[URL],
@@ -1132,14 +1132,15 @@ object parallel_web_crawler {
           newUrls <- ref.modify(state => (scraped -- state.visited, { val s2 = state.visitAll(scraped); either.fold(s2.logError, _ => s2) }))
         } yield newUrls) orElse ZIO.succeed(Set.empty[URL])
       }.map(_.toSet.flatten).flatMap(newUrls => loop(newUrls, ref))
+   */
 
 //    for {
 //      ref   <- Ref.make(CrawlState(seeds, List.empty[E]))
 //      _     <- loop(seeds, ref)
 //      state <- ref.get
 //    } yield state.errors
-    ???
-  }
+//    ???
+  //}
 
   /**
    * A data structure representing a structured URL, with a smart constructor.

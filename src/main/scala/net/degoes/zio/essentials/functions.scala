@@ -5,6 +5,9 @@ package essentials
 
 import java.time.LocalDate
 
+import net.degoes.zio.essentials.zio_types.Task
+import zio.IO
+
 /**
  * Functions are total, deterministic, and free of side effects.
  */
@@ -15,8 +18,8 @@ object functions {
    *
    * Convert the following partial procedure into a function.
    */
-  def parseInt1(s: String): Int   = s.toInt
-  def parseInt2( /* ??? */ ): ??? = ???
+  def parseInt1(s: String): Int       = s.toInt
+  def parseInt2(s: String): Task[Int] = IO(s.toInt)
 
   /**
    * EXERCISE 2
