@@ -1084,7 +1084,7 @@ object parallel_web_crawler {
          * the `Throwable` error to `Exceptiono`.
          */
         def getURL(url: URL): IO[Exception, String] = {
-          //def effectBlocking[A](sideEffect: => A): ZIO[Blocking, Throwable, A]
+          // def effectBlocking[A](sideEffect: => A): ZIO[Blocking, Throwable, A]
 
           def getURLImpl(url: URL): String =
             scala.io.Source.fromURL(url.url)(scala.io.Codec.UTF8).mkString
@@ -1100,14 +1100,7 @@ object parallel_web_crawler {
    *
    * Using `ZIO.accessM`, delegate to the `Web` module's `getURL` function.
    */
-  def getURL(url: URL): ZIO[Web, Exception, String] = {
-    def getURLImpl(url: URL): String =
-      scala.io.Source.fromURL(url.url)(scala.io.Codec.UTF8).mkString
-
-    zio.blocking.effectBlocking(getURLImpl(url)).refineOrDie {
-      case e: Exception => e
-    }
-  }
+  def getURL(url: URL): ZIO[Web, Exception, String] = ???
 
   final case class CrawlState[+E](visited: Set[URL], errors: List[E]) {
     final def visitAll(urls: Set[URL]): CrawlState[E] = copy(visited = visited ++ urls)
@@ -1140,11 +1133,12 @@ object parallel_web_crawler {
         } yield newUrls) orElse ZIO.succeed(Set.empty[URL])
       }.map(_.toSet.flatten).flatMap(newUrls => loop(newUrls, ref))
 
-    for {
-      ref   <- Ref.make(CrawlState(seeds, List.empty[E]))
-      _     <- loop(seeds, ref)
-      state <- ref.get
-    } yield state.errors
+//    for {
+//      ref   <- Ref.make(CrawlState(seeds, List.empty[E]))
+//      _     <- loop(seeds, ref)
+//      state <- ref.get
+//    } yield state.errors
+    ???
   }
 
   /**
