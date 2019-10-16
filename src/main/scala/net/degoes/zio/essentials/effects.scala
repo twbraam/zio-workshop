@@ -3,6 +3,10 @@
 package net.degoes.zio
 package essentials
 import net.degoes.zio.essentials.effects.Console.{ReadLine, Return, WriteLine}
+import net.degoes.zio.essentials.effects.unsafeRun
+import net.degoes.zio.essentials.zio_types.Example.unsafeRun
+import net.degoes.zio.essentials.zio_types.{UIO, putStrLn}
+import zio.{DefaultRuntime, Task}
 
 import scala.util.Try
 

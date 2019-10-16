@@ -3,15 +3,13 @@
 package net.degoes.zio
 package essentials
 
-import java.io.{ File, IOException }
-import java.util.concurrent.{ Executors, ScheduledExecutorService, TimeUnit }
+import java.io.{File, IOException}
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import zio._
 import zio.internal.PlatformLive
 
 import scala.io.Source
-import java.time.Clock
-import java.util.NoSuchElementException
 
 /**
  * `ZIO[R, E, A]` is an immutable data structure that models an effect, which
@@ -96,8 +94,8 @@ object zio_types {
    * Using the `ZIO.effectTotal` method, construct an effect that succeeds with
    * the (lazily evaluated) specified value and ascribe the correct type.
    */
-  lazy val bigList          = (1L to 100000000L).toList
-  lazy val bigListString    = bigList.mkString("\n")
+  lazy val bigList: List[FiberId] = (1L to 100000000L).toList
+  lazy val bigListString: String = bigList.mkString("\n")
   val ioString: UIO[String] = ZIO.effectTotal(bigListString)
 
   /**
@@ -317,29 +315,32 @@ object zio_operations {
    *
    * Write a new version of the factorial function, this one tail recursive.
    */
+  @scala.annotation.tailrec
   def factorialTailIO(n: Int, acc: Int = 1): UIO[Int] =
-    ???
+    if (n <= 1) IO.succeed(acc) // this step is executed last so all previous steps are being executed as a procedure?
+    else factorialTailIO(n -1, n * acc)
 
   /**
    * EXERCISE 8
    *
    * Using `ZIO#zip`, combine the result of two effects into a tuple.
    */
-  def toTuple[A, B](io1: UIO[A], io2: UIO[B]): UIO[(A, B)] = ???
+  def toTuple[A, B](io1: UIO[A], io2: UIO[B]): UIO[(A, B)] =
+    io1.zip(io2)
 
   /**
    * EXERCISE 9
    *
    * Using `ZIO#zipWith`, add the two values produced by the two effects.
    */
-  val combine: UIO[Int] = UIO.succeed(2).zipWith(UIO.succeed(40))(???)
+  val combine: UIO[Int] = UIO.succeed(2).zipWith(UIO.succeed(40))(_ + _)
 
   /**
    * EXERCISE 10
    *
    * Using `ZIO.foreach`, convert a list of integers into a List of String
    */
-  def convert(l: List[Int]): UIO[List[String]] = l.map(_.toString) ?
+  def convert(l: List[Int]): UIO[List[String]] = ZIO.foreach(l)(x => UIO.succeed(x.toString))
 
   /**
    * EXERCISE 11
@@ -347,7 +348,7 @@ object zio_operations {
    * Using `ZIO.collectAll`
    * evaluate a list of effects and collect the result into an IO of a list with their result
    */
-  def collect(effects: List[UIO[Int]]): UIO[List[Int]] = effects ?
+  def collect(effects: List[UIO[Int]]): UIO[List[Int]] = ZIO.collectAll(effects)
 
   /**
    * EXERCISE 12
@@ -362,6 +363,13 @@ object zio_operations {
           Task.effect(scala.io.StdIn.readLine()).flatMap(name => Task.effect(println(s"Hello, $name")).map(_ => name))
       )
 
+  val nameAsk2: Task[String] =
+    for {
+    _    <- Task.effect(println("What is your name?"))
+    name <- Task.effect(scala.io.StdIn.readLine())
+    _    <- Task.effect(println(s"Hello, $name"))
+    } yield name
+
   /**
    * EXERCISE 13
    *
@@ -374,11 +382,17 @@ object zio_operations {
       age   <- Task.fromTry(scala.util.Try(input.toInt))
     } yield age
 
+  val ageAsk2: Task[Int] =
+    Task
+    .effect(println("What is your age?"))
+    .flatMap(_ => Task.effect(scala.io.StdIn.readLine()).flatMap(name => Task.fromTry(scala.util.Try(name.toInt))))
+
   /**
    * EXERCISE 14
    *
    * Translate the following procedural program into its ZIO equivalent.
    */
+  @scala.annotation.tailrec
   def playGame1(): Unit = {
     val number = scala.util.Random.nextInt(5)
     println("Enter a number between 0 - 5: ")
@@ -392,7 +406,21 @@ object zio_operations {
         println("You guessed wrong! The number was " + number)
     }
   }
-  lazy val playGame2: Task[Unit] = ???
+
+  def retry: Task[Int] = Task.effect(scala.io.StdIn.readLine()).map(_.toInt).catchAll { _ =>
+    Task.effect(println("please enter a valid number")) *> retry
+  }
+
+  lazy val playGame2: Task[Unit] = for {
+    rand  <- Task.effect(scala.util.Random.nextInt(5))
+    _     <- Task.effect(println("Enter a number between 0 - 5: "))
+    result <- Task.effect(scala.io.StdIn.readLine())
+      .flatMap(_ => retry)
+      .flatMap { input =>
+        if (input == rand) Task.effect(println("You guessed right! The number was " + rand))
+        else Task.effect(println("You guessed wrong! The number was " + rand))
+      }
+  } yield result
 }
 
 object zio_failure {
@@ -636,7 +664,7 @@ object zio_interop extends DefaultRuntime {
  * ZIO's version of try / finally, try-with-resources.
  */
 object zio_resources {
-  import java.io.{ File, FileInputStream }
+  import java.io.{File, FileInputStream}
   class InputStream private (is: FileInputStream) {
     def read: IO[Exception, Option[Byte]] =
       IO.effectTotal(is.read).map(i => if (i < 0) None else Some(i.toByte))
@@ -782,11 +810,6 @@ object zio_resources {
 
 object zio_environment {
   import zio.console.Console
-  import zio.console
-  import zio.clock.Clock
-  import zio.clock
-  import zio.random.Random
-  import zio.random
 
   /**
    * The Default Modules in ZIO:
